@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+sqlalchemy
+transformers
+torch
+spacy
+vaderSentiment
+geotext
+slowapi
+praw
+telethon
+requests
+feedparser
+pydantic
+python-dotenv
+langdetect 
