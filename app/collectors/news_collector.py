@@ -9,6 +9,21 @@ class NewsCollector:
     def __init__(self, gnews_api_key: str = None):
         self.gnews_api_key = gnews_api_key or os.getenv("GNEWS_API_KEY")
         self.base_url = "https://gnews.io/api/v4/search"
+        self.keywords = self._load_keywords()
+
+    def _load_keywords(self):
+        try:
+            with open(os.path.join(os.path.dirname(__file__), '../../data/unrest_keywords.json'), 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Error loading unrest_keywords.json: {e}")
+            # Fallback to a basic set
+            return {
+                "protest_unrest": ["protest", "riot", "demonstration"],
+                "escalation_violence": ["violence", "clash", "police"],
+                "early_warning": ["gathering", "tension", "planned"],
+                "triggers": ["election", "verdict", "policy"]
+            }
 
     def collect_gnews(self) -> List[Dict]:
         """Collect news from GNews API"""
@@ -19,8 +34,17 @@ class NewsCollector:
             return self._get_mock_data()
         
         try:
-            keywords = ["protest", "riot", "strike", "demonstration", "civil unrest", "tear gas"]
-            for keyword in keywords:
+            kw = self.keywords
+            # Build queries: main terms and some combinations
+            main_terms = kw["protest_unrest"] + kw["escalation_violence"] + kw["early_warning"]
+            queries = main_terms[:]
+            for p in kw["protest_unrest"]:
+                for e in kw["escalation_violence"]:
+                    queries.append(f'{p} {e}')
+                for t in kw["triggers"]:
+                    queries.append(f'{p} {t}')
+            queries = queries[:20]
+            for keyword in queries:
                 try:
                     url = self.base_url
                     params = {
@@ -40,14 +64,11 @@ class NewsCollector:
                     if "articles" in data:
                         for article in data["articles"]:
                             try:
-                                # Sanitize text content
                                 title = self._sanitize_text(article.get("title", ""))
                                 description = self._sanitize_text(article.get("description", ""))
                                 content = title + " " + description
-                                
                                 if not content:
                                     continue
-                                
                                 post = {
                                     "platform": "gnews",
                                     "content": content,
@@ -61,10 +82,8 @@ class NewsCollector:
                                         "publishedAt": article.get("publishedAt", "")
                                     }
                                 }
-                                
                                 posts.append(post)
                                 print(f"Collected GNews article: {title[:100]}...")
-                                
                             except Exception as e:
                                 print(f"Error processing GNews article: {e}")
                                 continue
@@ -119,10 +138,10 @@ class NewsCollector:
                                 
                                 if not content:
                                     continue
-                                
-                                # Check if content contains protest-related keywords
-                                keywords = ["protest", "riot", "strike", "demonstration", "civil unrest", "tear gas"]
-                                if any(keyword.lower() in content.lower() for keyword in keywords):
+                                # Check if content contains any unrest-related keyword
+                                kw = self.keywords
+                                all_keywords = kw["protest_unrest"] + kw["escalation_violence"] + kw["early_warning"] + kw["triggers"]
+                                if any(keyword.lower() in content.lower() for keyword in all_keywords):
                                     post = {
                                         "platform": "rss",
                                         "content": content,
@@ -136,10 +155,9 @@ class NewsCollector:
                                             "feed_type": "rss"
                                         }
                                     }
-                                    
                                     posts.append(post)
                                     print(f"Collected RSS article: {title[:100]}...")
-                                    
+                                
                         except Exception as e:
                             print(f"Error processing RSS item: {e}")
                             continue

@@ -1,0 +1,14 @@
+{
+  "protest_unrest": [
+    "protest", "demonstration", "unrest", "riot", "civil unrest", "strike", "march", "rally", "sit-in", "blockade", "occupation", "walkout", "picket", "boycott", "uprising", "resistance", "dissent", "agitation", "mobilization", "standoff", "confrontation"
+  ],
+  "escalation_violence": [
+    "violence", "clash", "standoff", "police", "arrest", "detained", "crackdown", "tear gas", "rubber bullets", "gunfire", "looting", "vandalism", "burning", "fire", "shooting", "killed", "injured", "wounded", "chaos", "emergency", "lockdown", "curfew", "martial law", "military", "troops", "deployment"
+  ],
+  "early_warning": [
+    "gathering", "crowd", "tension", "planned", "organizing", "mobilizing", "call to action", "warning", "risk", "build-up", "brewing", "expected", "possible", "threat", "monitoring", "situation", "update"
+  ],
+  "triggers": [
+    "election", "verdict", "policy", "law", "government", "police", "shooting", "incident", "corruption", "injustice", "discrimination", "rights", "wages", "layoffs", "eviction", "land", "environment", "climate", "protest call", "protest plan", "protest schedule"
+  ]
+} 

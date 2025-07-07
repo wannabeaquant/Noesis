@@ -67,6 +67,13 @@ class NLPPipeline:
         
         # Use Nominatim (OpenStreetMap) for geocoding - no API key needed
         self.geocoding_service = "nominatim"
+        
+        # Load spaCy English model for NER (if available)
+        try:
+            self.spacy_nlp = spacy.load('en_core_web_sm')
+        except Exception as e:
+            print(f"spaCy model not available: {e}")
+            self.spacy_nlp = None
 
     def process(self, post: Dict) -> Dict:
         """Process a post through the full NLP pipeline"""
@@ -205,25 +212,37 @@ class NLPPipeline:
             return 0.0
 
     def extract_geolocation(self, text: str, location_raw: str) -> tuple:
-        """Extract latitude and longitude from text or raw location"""
+        """Extract latitude and longitude from text or raw location, using multiple methods"""
         try:
-            # Try to extract location from text first
             clean_text = self.clean_text(text)
+            locations = set()
+            # 1. geotext cities/countries
             try:
                 geo = geotext.GeoText(clean_text)
-                if geo.cities:
-                    location = geo.cities[0]
-                    return self.geocode_location(location)
+                locations.update(geo.cities)
+                locations.update(geo.countries)
             except Exception as e:
                 print(f"Geotext location extraction error: {e}")
-            
-            # Try raw location if provided
+            # 2. spaCy NER (if available)
+            if self.spacy_nlp:
+                try:
+                    doc = self.spacy_nlp(clean_text)
+                    for ent in doc.ents:
+                        if ent.label_ in ["GPE", "LOC"]:
+                            locations.add(ent.text)
+                except Exception as e:
+                    print(f"spaCy NER error: {e}")
+            # 3. location_raw fallback
             if location_raw:
                 clean_location = self.clean_text(location_raw)
-                return self.geocode_location(clean_location)
+                locations.add(clean_location)
+            # Try geocoding all found locations, return first valid
+            for loc in locations:
+                latlng = self.geocode_location(loc)
+                if latlng and latlng[0] is not None and latlng[1] is not None:
+                    return latlng
         except Exception as e:
             print(f"Geolocation extraction error: {e}")
-        
         return None, None
 
     def geocode_location(self, location: str) -> tuple:

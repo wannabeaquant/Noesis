@@ -2,6 +2,7 @@ import praw
 from typing import List, Dict
 import os
 from datetime import datetime
+import json
 
 class RedditCollector:
     def __init__(self, client_id: str = None, client_secret: str = None, user_agent: str = None):
@@ -23,6 +24,23 @@ class RedditCollector:
                 print(f"Error initializing Reddit client: {e}")
                 self.reddit = None
 
+        # Load unrest keywords
+        self.keywords = self._load_keywords()
+
+    def _load_keywords(self):
+        try:
+            with open(os.path.join(os.path.dirname(__file__), '../../data/unrest_keywords.json'), 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Error loading unrest_keywords.json: {e}")
+            # Fallback to a basic set
+            return {
+                "protest_unrest": ["protest", "riot", "demonstration"],
+                "escalation_violence": ["violence", "clash", "police"],
+                "early_warning": ["gathering", "tension", "planned"],
+                "triggers": ["election", "verdict", "policy"]
+            }
+
     def collect(self) -> List[Dict]:
         """Collect recent Reddit posts about protests and civil unrest"""
         posts = []
@@ -33,59 +51,60 @@ class RedditCollector:
                 print("Reddit API credentials not configured, using mock data")
                 return self._get_mock_data()
             
-            # Search for protest-related keywords
-            keywords = ["protest", "riot", "strike", "demonstration", "civil unrest", "tear gas"]
-            
-            for keyword in keywords:
-                try:
-                    # Search in relevant subreddits
-                    subreddits = ["news", "worldnews", "politics", "protests"]
-                    
-                    for subreddit in subreddits:
-                        try:
-                            # Search for posts
-                            search_results = self.reddit.subreddit(subreddit).search(
-                                keyword, 
-                                sort='new', 
-                                time_filter='day',
-                                limit=10
-                            )
-                            
-                            for submission in search_results:
-                                try:
-                                    # Sanitize text content
-                                    content = self._sanitize_text(submission.title + " " + (submission.selftext or ""))
-                                    if not content:
-                                        continue
-                                    
-                                    post = {
-                                        "platform": "reddit",
-                                        "content": content,
-                                        "author": str(submission.author) if submission.author else "unknown",
-                                        "timestamp": datetime.fromtimestamp(submission.created_utc).isoformat(),
-                                        "location_raw": "",
-                                        "link": f"https://reddit.com{submission.permalink}",
-                                        "extra": {
-                                            "subreddit": subreddit,
-                                            "score": submission.score,
-                                            "num_comments": submission.num_comments
-                                        }
-                                    }
-                                    
-                                    posts.append(post)
-                                    print(f"Collected Reddit post: {content[:100]}...")
-                                    
-                                except Exception as e:
-                                    print(f"Error processing Reddit submission: {e}")
+            # Load keywords and subreddits
+            kw = self.keywords
+            # Expanded subreddit list (add more as needed)
+            subreddits = [
+                "news", "worldnews", "politics", "protests", "PublicFreakout", "Bad_Cop_No_Donut",
+                "worldprotest", "inthenews", "UpliftingNews", "offbeat", "usnews", "ukpolitics",
+                "europe", "canada", "australia", "IndiaSpeaks", "unitedkingdom", "nyc", "LosAngeles", "Chicago"
+            ]
+            # Build search queries: main terms and some combinations
+            main_terms = kw["protest_unrest"] + kw["escalation_violence"] + kw["early_warning"]
+            queries = main_terms[:]
+            # Add some AND combinations for higher signal
+            for p in kw["protest_unrest"]:
+                for e in kw["escalation_violence"]:
+                    queries.append(f'{p} {e}')
+                for t in kw["triggers"]:
+                    queries.append(f'{p} {t}')
+            queries = queries[:20]  # Limit to avoid API abuse
+
+            for subreddit in subreddits:
+                for query in queries:
+                    try:
+                        search_results = self.reddit.subreddit(subreddit).search(
+                            query,
+                            sort='new',
+                            time_filter='day',
+                            limit=5
+                        )
+                        for submission in search_results:
+                            try:
+                                content = self._sanitize_text(submission.title + " " + (submission.selftext or ""))
+                                if not content:
                                     continue
-                                    
-                        except Exception as e:
-                            print(f"Error searching subreddit {subreddit}: {e}")
-                            continue
-                            
-                except Exception as e:
-                    print(f"Error searching for keyword {keyword}: {e}")
-                    continue
+                                post = {
+                                    "platform": "reddit",
+                                    "content": content,
+                                    "author": str(submission.author) if submission.author else "unknown",
+                                    "timestamp": datetime.fromtimestamp(submission.created_utc).isoformat(),
+                                    "location_raw": "",
+                                    "link": f"https://reddit.com{submission.permalink}",
+                                    "extra": {
+                                        "subreddit": subreddit,
+                                        "score": submission.score,
+                                        "num_comments": submission.num_comments
+                                    }
+                                }
+                                posts.append(post)
+                                print(f"Collected Reddit post: {content[:100]}...")
+                            except Exception as e:
+                                print(f"Error processing Reddit submission: {e}")
+                                continue
+                    except Exception as e:
+                        print(f"Error searching subreddit {subreddit} with query '{query}': {e}")
+                        continue
             
             print(f"Successfully collected {len(posts)} Reddit posts")
             

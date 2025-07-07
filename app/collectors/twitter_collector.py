@@ -2,6 +2,7 @@ import tweepy
 from typing import List, Dict
 import os
 from datetime import datetime, timedelta
+import json
 
 class TwitterCollector:
     def __init__(self, bearer_token: str = None):
@@ -12,6 +13,23 @@ class TwitterCollector:
         else:
             self.client = tweepy.Client(bearer_token=self.bearer_token, wait_on_rate_limit=True)
 
+        # Load unrest keywords
+        self.keywords = self._load_keywords()
+
+    def _load_keywords(self):
+        try:
+            with open(os.path.join(os.path.dirname(__file__), '../../data/unrest_keywords.json'), 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Error loading unrest_keywords.json: {e}")
+            # Fallback to a basic set
+            return {
+                "protest_unrest": ["protest", "riot", "demonstration"],
+                "escalation_violence": ["violence", "clash", "police"],
+                "early_warning": ["gathering", "tension", "planned"],
+                "triggers": ["election", "verdict", "policy"]
+            }
+
     def collect(self) -> List[Dict]:
         """Collect recent tweets about protests and civil unrest"""
         posts = []
@@ -21,39 +39,52 @@ class TwitterCollector:
             return self._get_mock_data()
         
         try:
-            # Search for protest-related keywords
-            query = "protest OR riot OR demonstration OR civil unrest OR strike OR tear gas lang:en -is:retweet"
-            # Twitter API v2: search_recent_tweets
-            response = self.client.search_recent_tweets(
-                query=query,
-                max_results=50,
-                tweet_fields=["created_at", "author_id", "lang"],
-                expansions=["author_id"],
-                user_fields=["username", "location"]
-            )
-            tweets = response.data
-            users = {u.id: u for u in response.includes["users"]} if response.includes and "users" in response.includes else {}
-            if not tweets:
-                print("No tweets found, using mock data")
-                return self._get_mock_data()
-            for tweet in tweets:
-                user = users.get(tweet.author_id, None)
-                content = self._sanitize_text(tweet.text)
-                if not content:
+            # Build queries from keywords
+            kw = self.keywords
+            # Main OR query (all protest/unrest/violence/early warning)
+            main_terms = kw["protest_unrest"] + kw["escalation_violence"] + kw["early_warning"]
+            main_query = " OR ".join([f'"{term}"' if ' ' in term else term for term in main_terms])
+            queries = [f'({main_query}) lang:en -is:retweet']
+
+            # Add some AND combinations for higher signal
+            for p in kw["protest_unrest"]:
+                for e in kw["escalation_violence"]:
+                    queries.append(f'("{p}" "{e}") lang:en -is:retweet')
+                for t in kw["triggers"]:
+                    queries.append(f'("{p}" "{t}") lang:en -is:retweet')
+            # Limit to avoid API abuse
+            queries = queries[:10]
+
+            for query in queries:
+                response = self.client.search_recent_tweets(
+                    query=query,
+                    max_results=25,
+                    tweet_fields=["created_at", "author_id", "lang"],
+                    expansions=["author_id"],
+                    user_fields=["username", "location"]
+                )
+                tweets = response.data
+                users = {u.id: u for u in response.includes["users"]} if response.includes and "users" in response.includes else {}
+                if not tweets:
                     continue
-                post = {
-                    "platform": "twitter",
-                    "content": content,
-                    "author": user.username if user else "unknown",
-                    "timestamp": tweet.created_at.isoformat() if tweet.created_at else datetime.utcnow().isoformat(),
-                    "location_raw": user.location if user and hasattr(user, 'location') and user.location else "",
-                    "link": f"https://twitter.com/i/web/status/{tweet.id}",
-                    "extra": {
-                        "tweet_id": str(tweet.id),
-                        "lang": tweet.lang or "en"
+                for tweet in tweets:
+                    user = users.get(tweet.author_id, None)
+                    content = self._sanitize_text(tweet.text)
+                    if not content:
+                        continue
+                    post = {
+                        "platform": "twitter",
+                        "content": content,
+                        "author": user.username if user else "unknown",
+                        "timestamp": tweet.created_at.isoformat() if tweet.created_at else datetime.utcnow().isoformat(),
+                        "location_raw": user.location if user and hasattr(user, 'location') and user.location else "",
+                        "link": f"https://twitter.com/i/web/status/{tweet.id}",
+                        "extra": {
+                            "tweet_id": str(tweet.id),
+                            "lang": tweet.lang or "en"
+                        }
                     }
-                }
-                posts.append(post)
+                    posts.append(post)
             print(f"Successfully collected {len(posts)} tweets")
         except Exception as e:
             print(f"Error collecting Twitter data: {e}")

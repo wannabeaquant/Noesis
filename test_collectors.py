@@ -13,6 +13,8 @@ load_dotenv()
 # Add the app directory to the path
 sys.path.append('app')
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 def test_twitter_collector():
     """Test Twitter collector"""
     print("\n" + "="*50)
@@ -23,10 +25,16 @@ def test_twitter_collector():
         from app.collectors.twitter_collector import TwitterCollector
         
         collector = TwitterCollector()
-        print(f"Twitter API Key configured: {bool(collector.bearer_token)}")
+        if not collector.bearer_token:
+            print("Twitter API Key configured: False (using mock data)")
+        else:
+            print("Twitter API Key configured: True (using real data)")
         
         posts = collector.collect()
-        print(f"Twitter posts collected: {len(posts)}")
+        if posts and posts[0].get('platform') == 'twitter' and 'mock' in posts[0].get('content', '').lower():
+            print("TwitterCollector: Using mock data.")
+        else:
+            print(f"Twitter posts collected: {len(posts)}")
         
         if posts:
             print("Sample Twitter post:")
@@ -53,15 +61,23 @@ def test_reddit_collector():
         from app.collectors.reddit_collector import RedditCollector
         
         collector = RedditCollector()
-        try:
+        if not (collector.client_id and collector.client_secret and collector.user_agent):
+            print("Reddit API configured: False (missing credentials, using mock data)")
+        elif collector.reddit is None:
+            print("Reddit API configured: False (initialization failed, using mock data)")
+        else:
             # Try a simple API call to check if credentials work
-            user = collector.reddit.user.me()
-            print(f"Reddit API configured: True (Authenticated as: {user})")
-        except Exception as e:
-            print(f"Reddit API configured: False (Error: {e})")
+            try:
+                user = collector.reddit.user.me()
+                print(f"Reddit API configured: True (Authenticated as: {user})")
+            except Exception as e:
+                print(f"Reddit API configured: False (Auth error: {e}) (using mock data)")
         
         posts = collector.collect()
-        print(f"Reddit posts collected: {len(posts)}")
+        if posts and posts[0].get('platform') == 'reddit' and 'mock' in posts[0].get('content', '').lower():
+            print("RedditCollector: Using mock data.")
+        else:
+            print(f"Reddit posts collected: {len(posts)}")
         
         if posts:
             print("Sample Reddit post:")
@@ -88,12 +104,18 @@ def test_news_collector():
         from app.collectors.news_collector import NewsCollector
         
         collector = NewsCollector()
-        print(f"GNews API Key configured: {bool(collector.gnews_api_key)}")
+        if not collector.gnews_api_key:
+            print("GNews API Key configured: False (using mock data)")
+        else:
+            print("GNews API Key configured: True (using real data)")
         
         # Test GNews
         print("\n--- Testing GNews ---")
         gnews_posts = collector.collect_gnews()
-        print(f"GNews articles collected: {len(gnews_posts)}")
+        if gnews_posts and gnews_posts[0].get('platform') == 'gnews' and 'mock' in gnews_posts[0].get('content', '').lower():
+            print("NewsCollector (GNews): Using mock data.")
+        else:
+            print(f"GNews articles collected: {len(gnews_posts)}")
         
         if gnews_posts:
             print("Sample GNews article:")
@@ -105,7 +127,10 @@ def test_news_collector():
         # Test RSS
         print("\n--- Testing RSS ---")
         rss_posts = collector.collect_rss()
-        print(f"RSS articles collected: {len(rss_posts)}")
+        if rss_posts and rss_posts[0].get('platform') == 'rss' and 'mock' in rss_posts[0].get('content', '').lower():
+            print("NewsCollector (RSS): Using mock data.")
+        else:
+            print(f"RSS articles collected: {len(rss_posts)}")
         
         if rss_posts:
             print("Sample RSS article:")
@@ -201,20 +226,41 @@ def test_full_pipeline():
         traceback.print_exc()
         return []
 
+def run_collectors_in_parallel():
+    print("\n" + "="*50)
+    print("RUNNING COLLECTORS IN PARALLEL")
+    print("="*50)
+    results = {}
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        future_to_name = {
+            executor.submit(test_twitter_collector): 'twitter',
+            executor.submit(test_reddit_collector): 'reddit',
+            executor.submit(test_news_collector): 'news',
+        }
+        for future in as_completed(future_to_name):
+            name = future_to_name[future]
+            try:
+                results[name] = future.result()
+            except Exception as exc:
+                print(f"{name.capitalize()} collector generated an exception: {exc}")
+                results[name] = []
+    return results
+
 def main():
     """Run all tests"""
     print("🚀 Testing NOESIS Collectors")
     print("="*60)
     
-    # Test individual collectors
-    twitter_posts = test_twitter_collector()
-    reddit_posts = test_reddit_collector()
-    news_posts = test_news_collector()
+    # Run individual collectors in parallel
+    parallel_results = run_collectors_in_parallel()
+    twitter_posts = parallel_results.get('twitter', [])
+    reddit_posts = parallel_results.get('reddit', [])
+    news_posts = parallel_results.get('news', [])
     
-    # Test data orchestrator
+    # Test data orchestrator (sequential)
     orchestrator_posts = test_data_orchestrator()
     
-    # Test full pipeline
+    # Test full pipeline (sequential)
     stored_posts = test_full_pipeline()
     
     # Summary

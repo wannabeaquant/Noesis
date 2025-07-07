@@ -413,8 +413,12 @@ class DataOrchestrator:
             for post in processed_posts
         ]
         
+        print(f"[DEBUG] create_incidents: {len(posts_dict)} processed posts passed to verification.")
         # Verify and create incidents
         incident_data = self.verification_service.verify(posts_dict)
+        print(f"[DEBUG] create_incidents: {len(incident_data)} incidents returned from verification.")
+        if incident_data:
+            print(f"[DEBUG] First incident: {incident_data[0]}")
         
         incidents = []
         for data in incident_data:
@@ -428,11 +432,10 @@ class DataOrchestrator:
                 severity=data.get("severity"),
                 status=data.get("status")
             )
-            
             self.db.add(incident)
             incidents.append(incident)
-        
         self.db.commit()
+        print(f"[DEBUG] create_incidents: {len(incidents)} incidents committed to DB.")
         return incidents
 
     def send_alerts(self, incidents: List[Incident]):

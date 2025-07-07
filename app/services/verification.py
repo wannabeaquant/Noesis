@@ -5,13 +5,13 @@ import math
 
 class VerificationService:
     def __init__(self):
-        self.time_window = timedelta(minutes=15)  # 15-minute clustering window
-        self.distance_threshold = 50  # 50km radius for location clustering
+        self.time_window = timedelta(minutes=60)  # 60-minute clustering window (loosened)
+        self.distance_threshold = 200  # 200km radius for location clustering (loosened)
 
     def verify(self, processed_posts: List[Dict]) -> List[Dict]:
         """Verify and cluster processed posts into incidents"""
-        # Filter posts with high protest scores
-        relevant_posts = [post for post in processed_posts if post.get("protest_score", 0) > 0.3]
+        # Filter posts with lower protest scores (loosened)
+        relevant_posts = [post for post in processed_posts if post.get("protest_score", 0) > 0.15]
         
         # Group posts by location and time
         clusters = self.cluster_posts(relevant_posts)
@@ -19,7 +19,7 @@ class VerificationService:
         # Create incidents from clusters
         incidents = []
         for cluster in clusters:
-            if len(cluster) >= 2:  # At least 2 posts to form an incident
+            if len(cluster) >= 1:  # Allow single posts to form an incident (loosened)
                 incident = self.create_incident(cluster)
                 incidents.append(incident)
         
