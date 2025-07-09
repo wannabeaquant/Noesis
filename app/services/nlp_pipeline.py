@@ -75,6 +75,13 @@ class NLPPipeline:
             print(f"spaCy model not available: {e}")
             self.spacy_nlp = None
 
+        # AI-based zero-shot classifier for protest relevance
+        try:
+            self.unrest_classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
+        except Exception as e:
+            print(f"Zero-shot classifier not available: {e}")
+            self.unrest_classifier = None
+
     def process(self, post: Dict) -> Dict:
         """Process a post through the full NLP pipeline"""
         content = post.get("content", "")
@@ -147,29 +154,31 @@ class NLPPipeline:
             return "text"
 
     def classify_protest_relevance(self, text: str) -> float:
-        """Classify if text is protest-related (0.0 to 1.0)"""
+        """Classify if text is protest-related (0.0 to 1.0) using zero-shot classification if available, else fallback to keyword logic."""
         try:
-            # Clean text first
             clean_text = self.clean_text(text)
-            text_lower = clean_text.lower()
-            
-            # Count protest keywords
-            keyword_count = sum(1 for keyword in self.protest_keywords if keyword.lower() in text_lower)
-            
-            # Simple scoring based on keyword density
-            words = clean_text.split()
-            if len(words) == 0:
-                return 0.0
-            
-            keyword_density = keyword_count / len(words)
-            
-            # Boost score for multiple keywords
-            if keyword_count > 1:
-                keyword_density *= 1.5
-            
-            return min(keyword_density * 10, 1.0)  # Scale to 0-1
+            if self.unrest_classifier:
+                result = self.unrest_classifier(
+                    clean_text,
+                    candidate_labels=["protest", "riot", "civil unrest", "normal news", "sports", "entertainment"],
+                    multi_label=True
+                )
+                # Return the score for the most relevant unrest label
+                scores = [score for label, score in zip(result['labels'], result['scores']) if label in ["protest", "riot", "civil unrest"]]
+                return max(scores) if scores else 0.0
+            else:
+                # Fallback to keyword logic
+                text_lower = clean_text.lower()
+                keyword_count = sum(1 for keyword in self.protest_keywords if keyword.lower() in text_lower)
+                words = clean_text.split()
+                if len(words) == 0:
+                    return 0.0
+                keyword_density = keyword_count / len(words)
+                if keyword_count > 1:
+                    keyword_density *= 1.5
+                return min(keyword_density * 10, 1.0)
         except Exception as e:
-            print(f"Protest classification error: {e}")
+            print(f"AI protest classification error: {e}")
             return 0.0
 
     def extract_entities(self, text: str) -> Dict:
