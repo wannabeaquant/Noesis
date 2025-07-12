@@ -13,6 +13,7 @@ from app.alerts.email_alert import EmailAlert
 import json
 from datetime import datetime
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 class DataOrchestrator:
     def __init__(self, db: Session):
@@ -26,64 +27,68 @@ class DataOrchestrator:
         self.email_alert = EmailAlert()
 
     def run_collection_cycle(self):
-        """Run a complete data collection and processing cycle"""
-        print("Starting data collection cycle...")
-        try:
-            # 1. Collect raw data from all sources
-            raw_posts = self.collect_all_data()
-            print(f"Collected {len(raw_posts)} raw posts")
-            if raw_posts:
-                print("Sample raw post:", raw_posts[0])
-            
-            # 2. Store raw posts in database
-            stored_posts = self.store_raw_posts(raw_posts)
-            print(f"Stored {len(stored_posts)} raw posts")
-            if stored_posts:
-                print("Sample stored post:", stored_posts[0].__dict__)
-            
-            # 3. Process posts through NLP pipeline
-            processed_posts = self.process_posts(stored_posts)
-            print(f"Processed {len(processed_posts)} posts")
-            if processed_posts:
-                print("Sample processed post:", processed_posts[0].__dict__)
-            
-            # 4. Verify and create incidents
-            incidents = self.create_incidents(processed_posts)
-            print(f"Created {len(incidents)} incidents")
-            if incidents:
-                print("Sample incident:", incidents[0].__dict__)
-            
-            # 5. Send alerts for new incidents
-            self.send_alerts(incidents)
-            print("Alerts sent")
-            
-            return {
-                "raw_posts": len(raw_posts),
-                "processed_posts": len(processed_posts),
-                "incidents": len(incidents)
-            }
-        except Exception as e:
-            import traceback
-            print("\n[run_collection_cycle] ERROR:")
-            print(traceback.format_exc())
-            # Try to print the last batch of data if available
+        """Run a complete data collection and processing cycle in parallel for all collectors"""
+        print("Starting data collection cycle (parallel)...")
+        raw_posts = []
+        errors = []
+        collectors = [
+            ("twitter", self.twitter_collector.collect),
+            ("reddit", self.reddit_collector.collect),
+            ("news", self.news_collector.collect)
+        ]
+        
+        def run_collector(name, func):
             try:
-                print("Last raw_posts:", raw_posts[:2])
-            except Exception:
-                pass
-            try:
-                print("Last stored_posts:", [p.__dict__ for p in stored_posts[:2]])
-            except Exception:
-                pass
-            try:
-                print("Last processed_posts:", [p.__dict__ for p in processed_posts[:2]])
-            except Exception:
-                pass
-            try:
-                print("Last incidents:", [i.__dict__ for i in incidents[:2]])
-            except Exception:
-                pass
-            raise
+                print(f"Running {name} collector...")
+                posts = func()
+                print(f"{name.title()} collector returned {len(posts)} posts.")
+                return posts
+            except Exception as e:
+                print(f"Error in {name} collector: {e}")
+                errors.append((name, str(e)))
+                return []
+        
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            future_to_name = {executor.submit(run_collector, name, func): name for name, func in collectors}
+            for future in as_completed(future_to_name):
+                posts = future.result()
+                if posts:
+                    raw_posts.extend(posts)
+        
+        print(f"Collected {len(raw_posts)} raw posts from all collectors.")
+        if errors:
+            print("Some collectors failed or were rate-limited:")
+            for name, err in errors:
+                print(f"  - {name}: {err}")
+        
+        # Store raw posts in database
+        stored_posts = self.store_raw_posts(raw_posts)
+        print(f"Stored {len(stored_posts)} raw posts")
+        if stored_posts:
+            print("Sample stored post:", stored_posts[0].__dict__)
+        
+        # Process posts through NLP pipeline
+        processed_posts = self.process_posts(stored_posts)
+        print(f"Processed {len(processed_posts)} posts")
+        if processed_posts:
+            print("Sample processed post:", processed_posts[0].__dict__)
+        
+        # Verify and create incidents
+        incidents = self.create_incidents(processed_posts)
+        print(f"Created {len(incidents)} incidents")
+        if incidents:
+            print("Sample incident:", incidents[0].__dict__)
+        
+        # Send alerts for new incidents
+        self.send_alerts(incidents)
+        print("Alerts sent")
+        
+        return {
+            "raw_posts": len(raw_posts),
+            "processed_posts": len(processed_posts),
+            "incidents": len(incidents),
+            "errors": errors
+        }
 
     def collect_all_data(self) -> List[Dict]:
         """Collect data from all sources"""

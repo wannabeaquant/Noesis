@@ -2,11 +2,13 @@ from typing import List, Dict
 from datetime import datetime, timedelta
 from collections import defaultdict
 import math
+from app.utils.geocoding import GeocodingService
 
 class VerificationService:
     def __init__(self):
         self.time_window = timedelta(minutes=60)  # 60-minute clustering window (loosened)
         self.distance_threshold = 200  # 200km radius for location clustering (loosened)
+        self.geocoding_service = GeocodingService()
 
     def verify(self, processed_posts: List[Dict]) -> List[Dict]:
         """Verify and cluster processed posts into incidents"""
@@ -125,10 +127,17 @@ class VerificationService:
         }
 
     def get_location_name(self, lat: float, lng: float) -> str:
-        """Get location name from coordinates (simplified)"""
-        if lat and lng:
-            return f"Location ({lat:.2f}, {lng:.2f})"
-        return "Unknown location"
+        """Get location name from coordinates using reverse geocoding"""
+        if lat is None or lng is None:
+            return "Unknown Location"
+        
+        # Try to get human-readable place name
+        place_name = self.geocoding_service.get_place_name(lat, lng)
+        if place_name and place_name != "Unknown Location":
+            return place_name
+        
+        # Fallback to coordinates if geocoding fails
+        return f"Location ({lat:.2f}, {lng:.2f})"
 
     def calculate_confidence(self, cluster: List[Dict]) -> int:
         """Calculate confidence score (0-100)"""

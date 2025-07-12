@@ -175,6 +175,19 @@ class NewsCollector:
         
         return posts
 
+    def collect(self) -> List[Dict]:
+        """Collect news from all sources (GNews + RSS)"""
+        posts = []
+        try:
+            posts.extend(self.collect_gnews())
+        except Exception as e:
+            print(f"Error in collect_gnews: {e}")
+        try:
+            posts.extend(self.collect_rss())
+        except Exception as e:
+            print(f"Error in collect_rss: {e}")
+        return posts
+
     def _sanitize_text(self, text: str) -> str:
         """Sanitize text to prevent encoding issues"""
         if not text:

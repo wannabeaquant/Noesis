@@ -21,7 +21,11 @@ def get_incidents(
     query = db.query(Incident)
     
     if region:
-        query = query.filter(Incident.location.contains(region))
+        # Try to match both place names and coordinates
+        query = query.filter(
+            (Incident.location.contains(region)) |
+            (Incident.location_lat.isnot(None) & Incident.location_lng.isnot(None))
+        )
     
     if date:
         try:
@@ -77,6 +81,80 @@ def get_latest_verified(limit: int = Query(10, description="Number of latest inc
         for incident in incidents
     ]
 
+@router.get("/stats/summary")
+def get_incident_stats(db: Session = Depends(get_db)):
+    """Get incident statistics"""
+    total_incidents = db.query(Incident).count()
+    verified_incidents = db.query(Incident).filter(Incident.status == "verified").count()
+    high_severity = db.query(Incident).filter(Incident.severity == "high").count()
+    
+    return {
+        "total_incidents": total_incidents,
+        "verified_incidents": verified_incidents,
+        "high_severity_incidents": high_severity,
+        "verification_rate": (verified_incidents / total_incidents * 100) if total_incidents > 0 else 0
+    }
+
+@router.get("/dashboard")
+def get_dashboard(db: Session = Depends(get_db)):
+    """Get real-time dashboard data for frontend"""
+    from datetime import datetime, timedelta
+    
+    # Get basic stats
+    total_incidents = db.query(Incident).count()
+    verified_incidents = db.query(Incident).filter(Incident.status == "verified").count()
+    high_severity = db.query(Incident).filter(Incident.severity == "high").count()
+    
+    # Get recent activity (last 24 hours)
+    yesterday = datetime.now() - timedelta(days=1)
+    recent_incidents = db.query(Incident).filter(Incident.incident_id >= total_incidents - 10).all()
+    
+    # Get severity distribution
+    severity_counts = {
+        "low": db.query(Incident).filter(Incident.severity == "low").count(),
+        "medium": db.query(Incident).filter(Incident.severity == "medium").count(),
+        "high": high_severity
+    }
+    
+    # Get status distribution
+    status_counts = {
+        "unverified": db.query(Incident).filter(Incident.status == "unverified").count(),
+        "medium": db.query(Incident).filter(Incident.status == "medium").count(),
+        "verified": verified_incidents
+    }
+    
+    # Get top locations (by incident count)
+    location_counts = {}
+    for incident in db.query(Incident).all():
+        location = incident.location or "Unknown"
+        location_counts[location] = location_counts.get(location, 0) + 1
+    
+    top_locations = sorted(location_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+    
+    return {
+        "summary": {
+            "total_incidents": total_incidents,
+            "verified_incidents": verified_incidents,
+            "high_severity_incidents": high_severity,
+            "verification_rate": (verified_incidents / total_incidents * 100) if total_incidents > 0 else 0
+        },
+        "recent_activity": [
+            {
+                "incident_id": incident.incident_id,
+                "title": incident.title,
+                "location": incident.location,
+                "severity": incident.severity,
+                "status": incident.status,
+                "sources_count": len(incident.sources) if incident.sources else 0
+            }
+            for incident in recent_incidents
+        ],
+        "severity_distribution": severity_counts,
+        "status_distribution": status_counts,
+        "top_locations": [{"location": loc, "count": count} for loc, count in top_locations],
+        "last_updated": datetime.now().isoformat()
+    }
+
 @router.get("/{incident_id}")
 def get_incident_by_id(incident_id: int, db: Session = Depends(get_db)):
     """Get incident details by ID"""
@@ -95,18 +173,4 @@ def get_incident_by_id(incident_id: int, db: Session = Depends(get_db)):
         "severity": incident.severity,
         "status": incident.status,
         "sources": incident.sources
-    }
-
-@router.get("/stats/summary")
-def get_incident_stats(db: Session = Depends(get_db)):
-    """Get incident statistics"""
-    total_incidents = db.query(Incident).count()
-    verified_incidents = db.query(Incident).filter(Incident.status == "verified").count()
-    high_severity = db.query(Incident).filter(Incident.severity == "high").count()
-    
-    return {
-        "total_incidents": total_incidents,
-        "verified_incidents": verified_incidents,
-        "high_severity_incidents": high_severity,
-        "verification_rate": (verified_incidents / total_incidents * 100) if total_incidents > 0 else 0
     } 
