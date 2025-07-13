@@ -10,7 +10,7 @@ const Team = () => {
     {
       name: "Sanidhya Shishodia",
       role: "Student at VIPS",
-      bio: "Former NSA analyst with 15+ years in OSINT and machine learning. PhD in Computer Science from MIT.",
+      bio: "CS undergrad with experience in AI agents, fintech, and Web3. Interned at LitAmor, worked with CapxAI (MNC), and built multiple award-winning projects.",
       icon: <Code className="h-8 w-8 text-blue-400" />,
       expertise: ["AI/ML", "OSINT", "Frontend"],
       social: {
@@ -22,7 +22,7 @@ const Team = () => {
     {
       name: "Vidisha Deswal",
       role: "Student at IGDTUW",
-      bio: "Data scientist specializing in NLP and geospatial analysis. Former lead at Google's Crisis Response team.",
+      bio: "CS & AI undergrad at IGDTUW, engaged in tech-for-good and leadership. Active in IEEE IGDTUW’s WIEmpower and Enactus IGDTUW, contributing to STEM empowerment initiatives. Passionate about building real-world impact through tech.",
       icon: <Database className="h-8 w-8 text-green-400" />,
       expertise: ["Frontend", "OSINT", "AI/ML"],
       social: {
@@ -34,7 +34,7 @@ const Team = () => {
     {
       name: "Atharva Singh",
       role: "Student at VIPS",
-      bio: "Former UN peacekeeping intelligence officer with expertise in conflict analysis and crisis prediction.",
+      bio: "CS undergrad with a background in cybersecurity and AI systems. Interned at Himitsu Labs, worked with CapxAI (MNC), and contributed to cutting-edge tech solutions.",
       icon: <Shield className="h-8 w-8 text-purple-400" />,
       expertise: ["OSINT", "AI/ML", "Backend"],
       social: {
