@@ -1,10 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
-import { Progress } from '../components/ui/progress';
-import { Alert, AlertDescription } from '../components/ui/alert';
-import { TrendingUp, AlertTriangle, Clock, MapPin, Activity, Satellite, DollarSign, Wifi } from 'lucide-react';
-import apiService from '../services/api';
+import React, { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
+import { Progress } from "../components/ui/progress";
+import { Alert, AlertDescription } from "../components/ui/alert";
+import {
+  TrendingUp,
+  AlertTriangle,
+  Clock,
+  MapPin,
+  Activity,
+  Satellite,
+  DollarSign,
+  Wifi,
+} from "lucide-react";
+import apiService from "../services/api";
 
 const PredictiveDashboard = () => {
   const [predictions, setPredictions] = useState([]);
@@ -23,14 +37,14 @@ const PredictiveDashboard = () => {
       const [predictionsData, riskData, dashboardData] = await Promise.all([
         apiService.fetchPredictions(),
         apiService.fetchRiskAssessment(),
-        apiService.fetchPredictiveDashboard()
+        apiService.fetchPredictiveDashboard(),
       ]);
 
       setPredictions(predictionsData || []);
       setRiskAssessment(riskData);
       setDashboardData(dashboardData);
     } catch (error) {
-      console.error('Error fetching predictive data:', error);
+      console.error("Error fetching predictive data:", error);
     } finally {
       setLoading(false);
     }
@@ -38,19 +52,27 @@ const PredictiveDashboard = () => {
 
   const getRiskColor = (level) => {
     switch (level) {
-      case 'high': return 'bg-red-500';
-      case 'medium': return 'bg-yellow-500';
-      case 'low': return 'bg-green-500';
-      default: return 'bg-gray-500';
+      case "high":
+        return "bg-red-500";
+      case "medium":
+        return "bg-yellow-500";
+      case "low":
+        return "bg-green-500";
+      default:
+        return "bg-gray-500";
     }
   };
 
   const getSeverityColor = (severity) => {
     switch (severity) {
-      case 'high': return 'text-red-600';
-      case 'medium': return 'text-yellow-600';
-      case 'low': return 'text-green-600';
-      default: return 'text-gray-600';
+      case "high":
+        return "text-red-600";
+      case "medium":
+        return "text-yellow-600";
+      case "low":
+        return "text-green-600";
+      default:
+        return "text-gray-600";
     }
   };
 
@@ -61,7 +83,7 @@ const PredictiveDashboard = () => {
       const diffHours = Math.round((time - now) / (1000 * 60 * 60));
       return `${diffHours} hours`;
     } catch {
-      return 'Unknown';
+      return "Unknown";
     }
   };
 
@@ -76,12 +98,14 @@ const PredictiveDashboard = () => {
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
-              <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-            NOESIS Predictive Intelligence Dashboard
-          </h1>
-          <p className="text-lg font-medium text-blue-600">AI-powered forecasting and risk assessment</p>
-        </div>
+      <div className="text-center space-y-2">
+        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+          NOESIS Predictive Intelligence Dashboard
+        </h1>
+        <p className="text-lg font-medium text-blue-600">
+          AI-powered forecasting and risk assessment
+        </p>
+      </div>
 
       {/* Risk Assessment Overview */}
       {riskAssessment && (
@@ -95,7 +119,11 @@ const PredictiveDashboard = () => {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="text-center">
-                <div className={`inline-flex items-center px-3 py-1 rounded-full text-white ${getRiskColor(riskAssessment.overall_risk_level)}`}>
+                <div
+                  className={`inline-flex items-center px-3 py-1 rounded-full text-white ${getRiskColor(
+                    riskAssessment.overall_risk_level
+                  )}`}
+                >
                   {riskAssessment.overall_risk_level.toUpperCase()}
                 </div>
                 <p className="text-sm text-gray-600 mt-1">Risk Level</p>
@@ -173,12 +201,16 @@ const PredictiveDashboard = () => {
 
       {/* Predictions */}
       <div className="space-y-4">
-        <h2 className="text-2xl font-bold text-gray-900">Active Predictions</h2>
+        <h2 className="text-2xl font-bold text-white-900">
+          Active Predictions
+        </h2>
         {predictions.length === 0 ? (
           <Card>
             <CardContent className="p-6 text-center">
               <AlertTriangle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">No high-confidence predictions at this time</p>
+              <p className="text-gray-600">
+                No high-confidence predictions at this time
+              </p>
             </CardContent>
           </Card>
         ) : (
@@ -193,10 +225,17 @@ const PredictiveDashboard = () => {
                         {prediction.location}
                       </CardTitle>
                       <p className="text-sm text-gray-600">
-                        Predicted in {formatTimeToIncident(prediction.predicted_incident_time)}
+                        Predicted in{" "}
+                        {formatTimeToIncident(
+                          prediction.predicted_incident_time
+                        )}
                       </p>
                     </div>
-                    <Badge className={getSeverityColor(prediction.predicted_severity)}>
+                    <Badge
+                      className={getSeverityColor(
+                        prediction.predicted_severity
+                      )}
+                    >
                       {prediction.predicted_severity.toUpperCase()}
                     </Badge>
                   </div>
@@ -207,91 +246,140 @@ const PredictiveDashboard = () => {
                     <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
                       {prediction.prediction_reason}
                     </div>
-                    
+
                     <div>
                       <div className="flex justify-between text-sm mb-1">
                         <span>Confidence</span>
                         <span>{(prediction.confidence * 100).toFixed(1)}%</span>
                       </div>
-                      <Progress value={prediction.confidence * 100} className="h-2" />
+                      <Progress
+                        value={prediction.confidence * 100}
+                        className="h-2"
+                      />
                     </div>
-                    
+
                     {/* Risk Factors */}
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div className="flex justify-between">
                         <span>Recent Incidents</span>
-                        <span className="font-medium">{prediction.risk_factors.recent_incidents}</span>
+                        <span className="font-medium">
+                          {prediction.risk_factors.recent_incidents}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span>High Severity</span>
-                        <span className="font-medium">{prediction.risk_factors.high_severity}</span>
+                        <span className="font-medium">
+                          {prediction.risk_factors.high_severity}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span>Threat Level</span>
-                        <span className="font-medium">{prediction.risk_factors.threat_level}</span>
+                        <span className="font-medium">
+                          {prediction.risk_factors.threat_level}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span>ML Confidence</span>
-                        <span className="font-medium">{(prediction.risk_factors.ml_confidence * 100).toFixed(1)}%</span>
+                        <span className="font-medium">
+                          {(
+                            prediction.risk_factors.ml_confidence * 100
+                          ).toFixed(1)}
+                          %
+                        </span>
                       </div>
                     </div>
-                    
+
                     {/* Real-time Threat Indicators */}
-                    {prediction.risk_factors.real_time_indicators && prediction.risk_factors.real_time_indicators.length > 0 && (
-                      <div className="mt-3">
-                        <h4 className="text-sm font-medium text-gray-700 mb-2">Real-time Threat Indicators:</h4>
-                        <div className="space-y-2">
-                          {prediction.risk_factors.real_time_indicators.map((indicator, idx) => (
-                            <div key={idx} className="text-xs bg-orange-50 p-2 rounded border-l-2 border-orange-300">
-                              <div className="flex justify-between items-center">
-                                <span className="font-medium text-orange-800 capitalize">
-                                  {indicator.source.replace('_', ' ')}
-                                </span>
-                                <span className={`px-1 rounded text-xs ${
-                                  indicator.trend === 'increasing' ? 'bg-red-100 text-red-700' :
-                                  indicator.trend === 'decreasing' ? 'bg-green-100 text-green-700' :
-                                  'bg-gray-100 text-gray-700'
-                                }`}>
-                                  {indicator.trend}
-                                </span>
-                              </div>
-                              <div className="text-gray-600 mt-1">
-                                {indicator.description}
-                              </div>
-                              <div className="flex justify-between text-gray-500 mt-1">
-                                <span>Value: {(indicator.value * 100).toFixed(1)}%</span>
-                                <span>Confidence: {(indicator.confidence * 100).toFixed(1)}%</span>
-                              </div>
-                            </div>
-                          ))}
+                    {prediction.risk_factors.real_time_indicators &&
+                      prediction.risk_factors.real_time_indicators.length >
+                        0 && (
+                        <div className="mt-3">
+                          <h4 className="text-sm font-medium text-gray-700 mb-2">
+                            Real-time Threat Indicators:
+                          </h4>
+                          <div className="space-y-2">
+                            {prediction.risk_factors.real_time_indicators.map(
+                              (indicator, idx) => (
+                                <div
+                                  key={idx}
+                                  className="text-xs bg-orange-50 p-2 rounded border-l-2 border-orange-300"
+                                >
+                                  <div className="flex justify-between items-center">
+                                    <span className="font-medium text-orange-800 capitalize">
+                                      {indicator.source.replace("_", " ")}
+                                    </span>
+                                    <span
+                                      className={`px-1 rounded text-xs ${
+                                        indicator.trend === "increasing"
+                                          ? "bg-red-100 text-red-700"
+                                          : indicator.trend === "decreasing"
+                                          ? "bg-green-100 text-green-700"
+                                          : "bg-gray-100 text-gray-700"
+                                      }`}
+                                    >
+                                      {indicator.trend}
+                                    </span>
+                                  </div>
+                                  <div className="text-gray-600 mt-1">
+                                    {indicator.description}
+                                  </div>
+                                  <div className="flex justify-between text-gray-500 mt-1">
+                                    <span>
+                                      Value:{" "}
+                                      {(indicator.value * 100).toFixed(1)}%
+                                    </span>
+                                    <span>
+                                      Confidence:{" "}
+                                      {(indicator.confidence * 100).toFixed(1)}%
+                                    </span>
+                                  </div>
+                                </div>
+                              )
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    
+                      )}
+
                     {/* Based on Incidents */}
-                    {prediction.risk_factors.based_on_incidents && prediction.risk_factors.based_on_incidents.length > 0 && (
-                      <div className="mt-3">
-                        <h4 className="text-sm font-medium text-gray-700 mb-2">Based on these incidents:</h4>
-                        <div className="space-y-2">
-                          {prediction.risk_factors.based_on_incidents.map((incident, idx) => (
-                            <div key={idx} className="text-xs bg-blue-50 p-2 rounded border-l-2 border-blue-300">
-                              <div className="font-medium text-blue-800">{incident.title}</div>
-                              <div className="flex justify-between text-gray-600 mt-1">
-                                <span>ID: {incident.id}</span>
-                                <span className={`px-1 rounded text-xs ${
-                                  incident.severity === 'high' ? 'bg-red-100 text-red-700' :
-                                  incident.severity === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                                  'bg-green-100 text-green-700'
-                                }`}>
-                                  {incident.severity}
-                                </span>
-                                <span>{incident.sources_count} sources</span>
-                              </div>
-                            </div>
-                          ))}
+                    {prediction.risk_factors.based_on_incidents &&
+                      prediction.risk_factors.based_on_incidents.length > 0 && (
+                        <div className="mt-3">
+                          <h4 className="text-sm font-medium text-gray-700 mb-2">
+                            Based on these incidents:
+                          </h4>
+                          <div className="space-y-2">
+                            {prediction.risk_factors.based_on_incidents.map(
+                              (incident, idx) => (
+                                <div
+                                  key={idx}
+                                  className="text-xs bg-blue-50 p-2 rounded border-l-2 border-blue-300"
+                                >
+                                  <div className="font-medium text-blue-800">
+                                    {incident.title}
+                                  </div>
+                                  <div className="flex justify-between text-gray-600 mt-1">
+                                    <span>ID: {incident.id}</span>
+                                    <span
+                                      className={`px-1 rounded text-xs ${
+                                        incident.severity === "high"
+                                          ? "bg-red-100 text-red-700"
+                                          : incident.severity === "medium"
+                                          ? "bg-yellow-100 text-yellow-700"
+                                          : "bg-green-100 text-green-700"
+                                      }`}
+                                    >
+                                      {incident.severity}
+                                    </span>
+                                    <span>
+                                      {incident.sources_count} sources
+                                    </span>
+                                  </div>
+                                </div>
+                              )
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
                   </div>
                 </CardContent>
               </Card>
@@ -334,4 +422,4 @@ const PredictiveDashboard = () => {
   );
 };
 
-export default PredictiveDashboard; 
+export default PredictiveDashboard;
