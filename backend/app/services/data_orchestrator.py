@@ -3,6 +3,9 @@ from sqlalchemy.orm import Session
 from app.collectors.twitter_collector import TwitterCollector
 from app.collectors.reddit_collector import RedditCollector
 from app.collectors.news_collector import NewsCollector
+from app.collectors.satellite_collector import SatelliteCollector
+from app.collectors.financial_collector import FinancialCollector
+from app.collectors.iot_collector import IoTCollector
 from app.services.nlp_pipeline import NLPPipeline
 from app.services.verification import VerificationService
 from app.models.raw_post import RawPost
@@ -21,6 +24,9 @@ class DataOrchestrator:
         self.twitter_collector = TwitterCollector()
         self.reddit_collector = RedditCollector()
         self.news_collector = NewsCollector()
+        self.satellite_collector = SatelliteCollector()
+        self.financial_collector = FinancialCollector()
+        self.iot_collector = IoTCollector()
         self.nlp_pipeline = NLPPipeline()
         self.verification_service = VerificationService()
         self.telegram_bot = TelegramAlertBot()
@@ -34,7 +40,10 @@ class DataOrchestrator:
         collectors = [
             ("twitter", self.twitter_collector.collect),
             ("reddit", self.reddit_collector.collect),
-            ("news", self.news_collector.collect)
+            ("news", self.news_collector.collect),
+            ("satellite", self.satellite_collector.collect),
+            ("financial", self.financial_collector.collect),
+            ("iot", self.iot_collector.collect)
         ]
         
         def run_collector(name, func):
@@ -48,7 +57,7 @@ class DataOrchestrator:
                 errors.append((name, str(e)))
                 return []
         
-        with ThreadPoolExecutor(max_workers=3) as executor:
+        with ThreadPoolExecutor(max_workers=6) as executor:
             future_to_name = {executor.submit(run_collector, name, func): name for name, func in collectors}
             for future in as_completed(future_to_name):
                 posts = future.result()
@@ -305,7 +314,7 @@ class DataOrchestrator:
                     "platform": raw_post.platform or "",
                     "link": raw_post.link or "",
                     "location_raw": raw_post.location_raw or "",
-                    "timestamp": raw_post.timestamp.isoformat() if raw_post.timestamp else ""
+                    "timestamp": raw_post.timestamp.isoformat() if raw_post.timestamp is not None else ""
                 }
                 
                 # Ensure all string fields are properly sanitized

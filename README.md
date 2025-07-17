@@ -1,4 +1,4 @@
-# NOESIS - OSINT Civil Unrest Detection System
+# NOESIS - Real-Time OSINT Civil Unrest Detection System
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
@@ -10,22 +10,24 @@ NOESIS is a real-time OSINT (Open Source Intelligence) system designed to detect
 ## 🌟 Features
 
 ### 🔍 **Real-time Monitoring**
-- **Multi-source Data Collection**: Twitter, Reddit, News APIs, Telegram
+- **Multi-source Data Collection**: Twitter, Reddit, News APIs, Telegram, Weather
 - **Live Incident Detection**: Continuous monitoring of social media and news sources
 - **Geographic Intelligence**: Automatic location detection and mapping
 - **Severity Assessment**: AI-powered risk evaluation and classification
 
 ### 🧠 **Advanced AI Processing**
-- **NLP Pipeline**: Sentiment analysis and protest detection
+- **NLP Pipeline**: Sentiment analysis, protest detection, and entity recognition
 - **Verification System**: Multi-source verification for incident accuracy
 - **Clustering Algorithm**: Groups related incidents for better analysis
 - **Language Support**: Multi-language processing capabilities
+- **Predictive Analytics**: ML-based risk assessment and escalation prediction
 
 ### 📊 **Interactive Dashboard**
 - **Real-time Map**: Global incident visualization with interactive markers
 - **Source Verification**: Direct links to original sources for fact-checking
 - **Filtering System**: Filter by severity, status, and location
 - **Live Updates**: Automatic refresh and real-time data streaming
+- **Predictive Dashboard**: Risk scores and escalation probabilities
 
 ### 🔔 **Alert System**
 - **Email Notifications**: Configurable alert delivery
@@ -40,7 +42,7 @@ NOESIS/
 │   ├── app/
 │   │   ├── api/            # REST API endpoints
 │   │   ├── collectors/     # Data collection modules
-│   │   ├── services/       # Core business logic
+│   │   ├── services/       # Core business logic & ML models
 │   │   ├── models/         # Database models
 │   │   ├── alerts/         # Notification system
 │   │   └── utils/          # Utility functions
@@ -72,9 +74,11 @@ NOESIS/
    cd NOESIS
    ```
 
-2. **Install Python dependencies**
+2. **Set up Python environment**
    ```bash
    cd backend
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
    pip install -r requirements.txt
    ```
 
@@ -83,14 +87,44 @@ NOESIS/
    python -m spacy download en_core_web_sm
    ```
 
-4. **Initialize database**
+4. **Configure environment variables**
+   Create a `.env` file in the backend directory:
+   ```env
+   # Database (SQLite - no setup required)
+   DATABASE_URL=sqlite:///./noesis.db
+
+   # Twitter API v2 (optional)
+   TWITTER_BEARER_TOKEN=your_twitter_bearer_token
+
+   # Reddit API (optional)
+   REDDIT_CLIENT_ID=your_reddit_client_id
+   REDDIT_CLIENT_SECRET=your_reddit_client_secret
+   REDDIT_USER_AGENT=NOESIS_Bot/1.0
+
+   # News API (optional)
+   NEWS_API_KEY=your_news_api_key
+
+   # Weather API (optional)
+   WEATHER_API_KEY=your_weather_api_key
+
+   # Telegram API (optional - for alerts)
+   TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+
+   # Email Configuration (optional)
+   SMTP_SERVER=smtp.gmail.com
+   SMTP_PORT=587
+   SMTP_USERNAME=your_email@gmail.com
+   SMTP_PASSWORD=your_app_password
+   ```
+
+5. **Initialize database**
    ```bash
    python create_db.py
    ```
 
-5. **Start the backend server**
+6. **Start the backend server**
    ```bash
-   python start.py
+   uvicorn main:app --host 0.0.0.0 --port 8000 --reload
    ```
    
    The API will be available at `http://localhost:8000`
@@ -122,19 +156,19 @@ NOESIS/
    - Click markers to view incident details and sources
 
 2. **Incident List**
-   - Toggle between "Recent Incidents" (20) and "All Incidents" (50)
+   - Toggle between "Recent Incidents" and "All Incidents"
    - Expandable incident cards with detailed information
    - Real-time source verification links
 
-3. **Filtering System**
+3. **Predictive Dashboard**
+   - Risk scores for different regions
+   - Escalation probability indicators
+   - Historical trend analysis
+
+4. **Filtering System**
    - Filter by severity level (High/Medium/Low)
    - Filter by verification status (Verified/Pending)
    - Geographic filtering capabilities
-
-4. **Source Verification**
-   - Direct links to original sources
-   - Modal view for multiple sources
-   - Domain name display for easy identification
 
 ### API Endpoints
 
@@ -144,6 +178,10 @@ NOESIS/
 - `GET /incidents/dashboard` - Get dashboard statistics
 - `GET /incidents/{incident_id}` - Get specific incident
 
+#### Predictions
+- `GET /predictions/dashboard` - Get predictive analytics data
+- `GET /predictions/risk-scores` - Get current risk scores
+
 #### Collection
 - `POST /collection/trigger` - Trigger data collection cycle
 - `GET /collection/status` - Get collection status
@@ -152,37 +190,26 @@ NOESIS/
 - `POST /alerts/subscribe` - Subscribe to alerts
 - `GET /alerts/subscribers` - Get alert subscribers
 
+#### Moderation
+- `POST /moderate/flag` - Flag false positive
+- `POST /moderate/confirm` - Confirm incident
+- `POST /moderate/merge` - Merge duplicate incidents
+
 ## 🔧 Configuration
-
-### Environment Variables
-
-Create a `.env` file in the backend directory:
-
-```env
-# Database
-DATABASE_URL=sqlite:///./noesis.db
-
-# API Keys (optional for demo)
-TWITTER_API_KEY=your_twitter_api_key
-REDDIT_CLIENT_ID=your_reddit_client_id
-NEWS_API_KEY=your_news_api_key
-
-# Alert Configuration
-TELEGRAM_BOT_TOKEN=your_telegram_bot_token
-EMAIL_SMTP_SERVER=smtp.gmail.com
-EMAIL_SMTP_PORT=587
-EMAIL_USERNAME=your_email@gmail.com
-EMAIL_PASSWORD=your_app_password
-```
 
 ### Data Sources
 
 The system supports multiple data sources:
 
-- **Twitter**: Real-time tweet monitoring
+- **Twitter**: Real-time tweet monitoring (requires API key)
 - **Reddit**: Subreddit monitoring for protest discussions
 - **News APIs**: RSS feeds and news article monitoring
 - **Telegram**: Channel monitoring for real-time updates
+- **Weather**: Weather conditions that might affect protests
+
+### Environment Variables
+
+All configuration is done through environment variables in the `.env` file. The system will work with minimal configuration using only free APIs and services.
 
 ## 🧪 Testing
 
@@ -198,14 +225,25 @@ cd frontend
 npm test
 ```
 
+### Manual Testing
+```bash
+# Test data collection
+cd backend
+python quick_refresh.py
+
+# Test full pipeline
+python refresh_data.py --once
+```
+
 ## 📊 Data Flow
 
 1. **Collection**: Data collectors gather information from multiple sources
 2. **Processing**: NLP pipeline analyzes text for protest indicators
 3. **Verification**: Multi-source verification confirms incident accuracy
-4. **Storage**: Incidents stored in database with metadata
-5. **Visualization**: Frontend displays data on interactive map
-6. **Alerts**: Notification system sends alerts for critical incidents
+4. **Prediction**: ML models assess risk and escalation probability
+5. **Storage**: Incidents stored in database with metadata
+6. **Visualization**: Frontend displays data on interactive map
+7. **Alerts**: Notification system sends alerts for critical incidents
 
 ## 🔒 Security Features
 
@@ -214,6 +252,35 @@ npm test
 - **CORS Configuration**: Proper cross-origin resource sharing
 - **Error Handling**: Graceful error handling and logging
 
+## 🚀 Deployment
+
+### Production Setup
+
+1. **Backend Deployment**
+   ```bash
+   cd backend
+   pip install -r requirements.txt
+   gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker
+   ```
+
+2. **Frontend Build**
+   ```bash
+   cd frontend
+   npm run build
+   ```
+
+3. **Environment Configuration**
+   - Set production environment variables
+   - Configure reverse proxy (nginx)
+   - Set up SSL certificates
+
+### Docker Deployment (Optional)
+
+```bash
+# Build and run with Docker Compose
+docker-compose up -d
+```
+
 ## 🤝 Contributing
 
 1. Fork the repository
@@ -221,6 +288,13 @@ npm test
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+
+### Development Guidelines
+
+- Follow PEP 8 for Python code
+- Use TypeScript for frontend components
+- Add tests for new features
+- Update documentation for API changes
 
 ## 📝 License
 
@@ -233,6 +307,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Leaflet** for the mapping functionality
 - **spaCy** for natural language processing
 - **OpenStreetMap** for map data
+- **Transformers** for advanced NLP capabilities
 
 ## 📞 Support
 
@@ -240,6 +315,18 @@ For support and questions:
 - Create an issue in the GitHub repository
 - Check the API documentation at `/docs`
 - Review the code comments for implementation details
+
+## 🔄 Data Refresh
+
+The system includes automated data refresh capabilities:
+
+```bash
+# Run once
+python refresh_data.py --once
+
+# Run scheduled (every 30 minutes)
+python refresh_data.py --schedule
+```
 
 ---
 

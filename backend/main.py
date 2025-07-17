@@ -5,7 +5,11 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from fastapi import Request, Response
 
-app = FastAPI(title="NOESIS Backend")
+app = FastAPI(
+    title="NOESIS Backend",
+    description="Real-time OSINT Civil Unrest Detection System",
+    version="1.0.0"
+)
 
 # CORS
 app.add_middleware(
@@ -35,4 +39,14 @@ app.include_router(api_router)
 
 @app.get("/")
 def root():
-    return {"message": "NOESIS Backend is running."} 
+    return {
+        "message": "NOESIS Backend is running",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "redoc": "/redoc"
+    }
+
+@app.get("/health")
+def health_check():
+    """Health check endpoint for Docker"""
+    return {"status": "healthy", "service": "NOESIS Backend"} 

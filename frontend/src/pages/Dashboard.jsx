@@ -24,7 +24,7 @@ const Dashboard = () => {
       const [incidentsData, dashboardResponse] = await Promise.all([
         incidentViewMode === 'recent' 
           ? apiService.fetchLatestIncidents(20)
-          : apiService.fetchIncidents({ limit: 50 }),
+          : apiService.fetchIncidents({ limit: 1000 }), // Fetch all incidents
         apiService.fetchDashboard()
       ]);
       
@@ -199,8 +199,8 @@ const Dashboard = () => {
                   onChange={(e) => setIncidentViewMode(e.target.value)}
                   className="bg-slate-700 text-white text-sm rounded-lg px-3 py-1 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
                 >
-                  <option value="recent">Recent (20)</option>
-                  <option value="all">All ({incidents.length})</option>
+                  <option value="recent">Recent ({Math.min(20, incidents.length)})</option>
+                  <option value="all">All ({dashboardData?.summary?.total_incidents || incidents.length})</option>
                 </select>
               </div>
               <div className="space-y-4 max-h-[400px] overflow-y-auto">

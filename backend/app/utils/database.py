@@ -9,6 +9,8 @@ from app.models.incident import Incident
 from app.models.alert_subscriber import AlertSubscriber
 import os
 from dotenv import load_dotenv
+from contextlib import asynccontextmanager
+import asyncio
 
 load_dotenv()
 
@@ -23,6 +25,15 @@ def get_db():
     try:
         yield db
     finally:
+        db.close()
+
+@asynccontextmanager
+async def get_db_session():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        await asyncio.sleep(0)  # allow async context, even if not needed
         db.close()
 
 def create_tables():

@@ -4,6 +4,7 @@ import Layout from './components/Layout';
 import Home from './pages/Home';
 import About from './pages/About';
 import Dashboard from './pages/Dashboard';
+import PredictiveDashboard from './pages/PredictiveDashboard';
 import Contact from './pages/Contact';
 import Team from './pages/Team';
 import './App.css';
@@ -42,6 +43,11 @@ const AnimatedRoutes = () => {
         <Route path="/dashboard" element={
           <PageTransition>
             <Dashboard />
+          </PageTransition>
+        } />
+        <Route path="/predictive" element={
+          <PageTransition>
+            <PredictiveDashboard />
           </PageTransition>
         } />
         <Route path="/contact" element={

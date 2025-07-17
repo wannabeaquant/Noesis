@@ -1,24 +1,33 @@
+#!/usr/bin/env python3
+"""
+NOESIS Backend Server Startup Script
+"""
+
 import uvicorn
-from app.utils.database import create_tables
-from dotenv import load_dotenv
 import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 def main():
-    # Load environment variables
-    load_dotenv()
+    """Start the NOESIS backend server"""
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", "8000"))
+    reload = os.getenv("RELOAD", "true").lower() == "true"
     
-    # Create database tables
-    print("Creating database tables...")
-    create_tables()
-    print("Database tables created successfully!")
+    print("🚀 Starting NOESIS Backend Server...")
+    print(f"📍 Host: {host}")
+    print(f"🔌 Port: {port}")
+    print(f"🔄 Reload: {reload}")
+    print("📚 API Docs: http://localhost:8000/docs")
+    print("🔍 Interactive API: http://localhost:8000/redoc")
     
-    # Start the FastAPI server
-    print("Starting NOESIS Backend server...")
     uvicorn.run(
         "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
+        host=host,
+        port=port,
+        reload=reload,
         log_level="info"
     )
 

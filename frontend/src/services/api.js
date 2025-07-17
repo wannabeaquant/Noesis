@@ -79,6 +79,39 @@ class ApiService {
       return null;
     }
   }
+
+  async fetchPredictions(confidenceThreshold = 0.3) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/predictions/?confidence_threshold=${confidenceThreshold}`);
+      if (!response.ok) throw new Error('Failed to fetch predictions');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching predictions:', error);
+      return [];
+    }
+  }
+
+  async fetchRiskAssessment() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/predictions/risk-assessment`);
+      if (!response.ok) throw new Error('Failed to fetch risk assessment');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching risk assessment:', error);
+      return null;
+    }
+  }
+
+  async fetchPredictiveDashboard() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/predictions/dashboard`);
+      if (!response.ok) throw new Error('Failed to fetch predictive dashboard');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching predictive dashboard:', error);
+      return null;
+    }
+  }
 }
 
 export default new ApiService(); 
