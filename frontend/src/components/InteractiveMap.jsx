@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { motion } from 'framer-motion';
+import apiService from '../services/api';
 
 // Fix for default markers in react-leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -155,8 +156,31 @@ const AnimatedMarkers = () => {
 
 const InteractiveMap = () => {
   const [selectedIncident, setSelectedIncident] = useState(null);
+  const [incidents, setIncidents] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchIncidents();
+  }, []);
+
+  const fetchIncidents = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const data = await apiService.fetchLatestIncidents(20);
+      setIncidents(data);
+    } catch (err) {
+      console.error('Error fetching incidents:', err);
+      setError('Failed to load incident data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const formatTimeAgo = (timestamp) => {
+    if (!timestamp) return 'Unknown time';
+    
     const now = new Date();
     const incidentTime = new Date(timestamp);
     const diffInHours = Math.floor((now - incidentTime) / (1000 * 60 * 60));
@@ -174,6 +198,11 @@ const InteractiveMap = () => {
       default: return 'text-gray-400 bg-gray-900/20';
     }
   };
+
+  // Filter out incidents without coordinates
+  const incidentsWithCoords = incidents.filter(incident => 
+    incident.location_lat && incident.location_lng
+  );
 
   return (
     <div className="w-full h-full relative">
@@ -197,10 +226,10 @@ const InteractiveMap = () => {
         />
         <AnimatedMarkers />
         
-        {mockIncidents.map((incident) => (
+        {incidentsWithCoords.map((incident) => (
           <Marker
-            key={incident.id}
-            position={[incident.lat, incident.lng]}
+            key={incident.incident_id}
+            position={[incident.location_lat, incident.location_lng]}
             icon={createCustomIcon(incident.severity)}
             eventHandlers={{
               click: () => setSelectedIncident(incident),
@@ -222,7 +251,7 @@ const InteractiveMap = () => {
                 <div className="flex items-center text-slate-300 text-sm mb-3 space-x-4">
                   <div className="flex items-center">
                     <span className="mr-1">📍</span>
-                    {incident.location}
+                    {incident.location || 'Unknown Location'}
                   </div>
                   <div className="flex items-center">
                     <span className="mr-1">⏰</span>
@@ -232,21 +261,21 @@ const InteractiveMap = () => {
 
                 {/* Description */}
                 <p className="text-slate-300 text-sm mb-3 leading-relaxed">
-                  {incident.description}
+                  {incident.description || 'No description available'}
                 </p>
 
                 {/* Stats */}
                 <div className="grid grid-cols-2 gap-4 mb-3">
                   <div className="flex items-center text-sm">
-                    <span className="mr-2">👥</span>
+                    <span className="mr-2">📊</span>
                     <span className="text-slate-300">
-                      {incident.participants.toLocaleString()} participants
+                      {incident.sources?.length || 0} sources
                     </span>
                   </div>
                   <div className="flex items-center text-sm">
-                    <span className="mr-2">📊</span>
-                    <span className="text-slate-300 capitalize">
-                      {incident.sentiment}
+                    <span className="mr-2">🔍</span>
+                    <span className="text-slate-300">
+                      {incident.status}
                     </span>
                   </div>
                 </div>
@@ -254,32 +283,48 @@ const InteractiveMap = () => {
                 {/* Verification Status */}
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center text-sm">
-                    {incident.verification === 'verified' ? (
+                    {incident.status === 'verified' ? (
                       <span className="mr-2">✅</span>
                     ) : (
                       <span className="mr-2">⏳</span>
                     )}
-                    <span className="text-slate-300 capitalize">
-                      {incident.verification}
+                    <span className="text-slate-300">
+                      {incident.status}
                     </span>
                   </div>
                   <div className="text-xs text-slate-400">
-                    ID: {incident.id}
+                    ID: {incident.incident_id}
                   </div>
                 </div>
 
-                {/* Tags */}
-                {incident.tags && incident.tags.length > 0 && (
+                {/* Sources */}
+                {incident.sources && incident.sources.length > 0 && (
                   <div className="border-t border-slate-700 pt-3">
-                    <div className="flex flex-wrap gap-1">
-                      {incident.tags.map((tag, index) => (
-                        <span
+                    <h4 className="text-sm font-semibold text-white mb-2">Sources:</h4>
+                    <div className="space-y-2">
+                      {incident.sources.slice(0, 3).map((source, index) => (
+                        <a
                           key={index}
-                          className="px-2 py-1 bg-slate-700 text-slate-300 text-xs rounded-full"
+                          href={source}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block px-2 py-1 bg-blue-900 text-blue-300 text-xs rounded hover:bg-blue-800/50 transition-colors break-all"
                         >
-                          #{tag}
-                        </span>
+                          {source.includes('http') ? (
+                            <span className="flex items-center">
+                              <span className="truncate">{new URL(source).hostname}</span>
+                              <span className="ml-1 text-blue-400">↗</span>
+                            </span>
+                          ) : (
+                            source
+                          )}
+                        </a>
                       ))}
+                      {incident.sources.length > 3 && (
+                        <span className="px-2 py-1 bg-slate-700 text-slate-300 text-xs rounded-full">
+                          +{incident.sources.length - 3} more
+                        </span>
+                      )}
                     </div>
                   </div>
                 )}
@@ -290,23 +335,51 @@ const InteractiveMap = () => {
       </MapContainer>
       
       {/* Loading overlay */}
-      <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center rounded-2xl">
-        <div className="text-center">
-          <motion.div
-            animate={{ 
-              rotate: 360,
-            }}
-            transition={{ 
-              duration: 20,
-              repeat: Infinity,
-              ease: "linear"
-            }}
-          >
-            <span className="text-4xl">🌍</span>
-          </motion.div>
-          <p className="text-slate-300 text-lg mt-4">Loading Interactive Map...</p>
+      {isLoading && (
+        <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center rounded-2xl">
+          <div className="text-center">
+            <motion.div
+              animate={{ 
+                rotate: 360,
+              }}
+              transition={{ 
+                duration: 20,
+                repeat: Infinity,
+                ease: "linear"
+              }}
+            >
+              <span className="text-4xl">🌍</span>
+            </motion.div>
+            <p className="text-slate-300 text-lg mt-4">Loading Real-Time Data...</p>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Error overlay */}
+      {error && (
+        <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center rounded-2xl">
+          <div className="text-center">
+            <span className="text-4xl">⚠️</span>
+            <p className="text-red-300 text-lg mt-4">{error}</p>
+            <button
+              onClick={fetchIncidents}
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+      {/* No data overlay */}
+      {!isLoading && !error && incidentsWithCoords.length === 0 && (
+        <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center rounded-2xl">
+          <div className="text-center">
+            <span className="text-4xl">📊</span>
+            <p className="text-slate-300 mt-4">No incidents with location data</p>
+            <p className="text-slate-400 text-sm mt-2">Try refreshing or check back later</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
