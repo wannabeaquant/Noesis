@@ -109,12 +109,29 @@ class VerificationService:
             severity = "low"
             status = "unverified"
         
-        # Create title from most relevant post
+        # Find the most relevant post (highest protest score)
         most_relevant = max(cluster, key=lambda x: x.get("protest_score", 0))
-        
+
+        # Try to get a meaningful title
+        incident_title = (
+            most_relevant.get("title") or
+            most_relevant.get("headline") or
+            most_relevant.get("content") or
+            f"Civil unrest reported in {self.get_location_name(avg_lat, avg_lng)}"
+        )
+
+        # For description, use the top 3 posts' content/title/headline
+        sorted_cluster = sorted(cluster, key=lambda x: x.get("protest_score", 0), reverse=True)
+        description_snippets = []
+        for post in sorted_cluster[:3]:  # Top 3 posts
+            snippet = post.get("content") or post.get("title") or post.get("headline")
+            if snippet:
+                description_snippets.append(snippet.strip())
+        incident_description = " | ".join(description_snippets) if description_snippets else "No further details available."
+
         return {
-            "title": f"Civil unrest reported in {self.get_location_name(avg_lat, avg_lng)}",
-            "description": f"Multiple sources report civil unrest. {len(cluster)} posts across {platform_diversity} platforms.",
+            "title": incident_title.strip(),
+            "description": incident_description,
             "sources": [post.get("link") for post in cluster if post.get("link")],
             "location": self.get_location_name(avg_lat, avg_lng),
             "location_lat": avg_lat,
