@@ -45,51 +45,52 @@ class NewsCollector:
                     queries.append(f'{p} {t}')
             queries = queries[:20]
             for keyword in queries:
-                try:
-                    url = self.base_url
-                    params = {
-                        "q": keyword,
-                        "token": self.gnews_api_key,
-                        "lang": "en",
-                        "country": "us",
-                        "max": 10,
-                        "sortby": "publishedAt"
-                    }
-                    response = requests.get(url, params=params, timeout=10)
-                    if response.status_code == 401:
-                        print("GNews API key is invalid. Using mock data.")
-                        return self._get_mock_data()
-                    response.raise_for_status()
-                    data = response.json()
-                    if "articles" in data:
-                        for article in data["articles"]:
-                            try:
-                                title = self._sanitize_text(article.get("title", ""))
-                                description = self._sanitize_text(article.get("description", ""))
-                                content = title + " " + description
-                                if not content:
-                                    continue
-                                post = {
-                                    "platform": "gnews",
-                                    "content": content,
-                                    "author": self._sanitize_text(article.get("source", {}).get("name", "Unknown")),
-                                    "timestamp": article.get("publishedAt", ""),
-                                    "location_raw": "",
-                                    "link": article.get("url", ""),
-                                    "extra": {
-                                        "title": title,
-                                        "source": article.get("source", {}).get("name", ""),
-                                        "publishedAt": article.get("publishedAt", "")
+                for country in ["us", "in"]:  # Query both US and India
+                    try:
+                        url = self.base_url
+                        params = {
+                            "q": keyword,
+                            "token": self.gnews_api_key,
+                            "lang": "en",
+                            "country": country,
+                            "max": 10,
+                            "sortby": "publishedAt"
+                        }
+                        response = requests.get(url, params=params, timeout=10)
+                        if response.status_code == 401:
+                            print("GNews API key is invalid. Using mock data.")
+                            return self._get_mock_data()
+                        response.raise_for_status()
+                        data = response.json()
+                        if "articles" in data:
+                            for article in data["articles"]:
+                                try:
+                                    title = self._sanitize_text(article.get("title", ""))
+                                    description = self._sanitize_text(article.get("description", ""))
+                                    content = title + " " + description
+                                    if not content:
+                                        continue
+                                    post = {
+                                        "platform": "gnews",
+                                        "content": content,
+                                        "author": self._sanitize_text(article.get("source", {}).get("name", "Unknown")),
+                                        "timestamp": article.get("publishedAt", ""),
+                                        "location_raw": "",
+                                        "link": article.get("url", ""),
+                                        "extra": {
+                                            "title": title,
+                                            "source": article.get("source", {}).get("name", ""),
+                                            "publishedAt": article.get("publishedAt", "")
+                                        }
                                     }
-                                }
-                                posts.append(post)
-                                print(f"Collected GNews article: {title[:100]}...")
-                            except Exception as e:
-                                print(f"Error processing GNews article: {e}")
-                                continue
-                except Exception as e:
-                    print(f"Error collecting GNews data for keyword {keyword}: {e}")
-                    continue
+                                    posts.append(post)
+                                    print(f"Collected GNews article: {title[:100]}...")
+                                except Exception as e:
+                                    print(f"Error processing GNews article: {e}")
+                                    continue
+                    except Exception as e:
+                        print(f"Error collecting GNews data for keyword {keyword} in country {country}: {e}")
+                        continue
             
             print(f"Successfully collected {len(posts)} GNews articles")
             
@@ -109,7 +110,10 @@ class NewsCollector:
             rss_feeds = [
                 "https://feeds.bbci.co.uk/news/rss.xml",
                 "https://rss.cnn.com/rss/edition.rss",
-                "https://feeds.reuters.com/Reuters/worldNews"
+                "https://feeds.reuters.com/Reuters/worldNews",
+                "https://timesofindia.indiatimes.com/rssfeedstopstories.cms",
+                "https://indianexpress.com/section/india/feed/",
+                "https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml"
             ]
             
             for feed_url in rss_feeds:

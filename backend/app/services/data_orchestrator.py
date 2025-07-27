@@ -314,7 +314,9 @@ class DataOrchestrator:
                     "platform": raw_post.platform or "",
                     "link": raw_post.link or "",
                     "location_raw": raw_post.location_raw or "",
-                    "timestamp": raw_post.timestamp.isoformat() if raw_post.timestamp is not None else ""
+                    "timestamp": raw_post.timestamp.isoformat() if raw_post.timestamp is not None else "",
+                    "title": (raw_post.extra.get("title") if raw_post.extra else None),
+                    "headline": (raw_post.extra.get("headline") if raw_post.extra else None)
                 }
                 
                 # Ensure all string fields are properly sanitized
@@ -412,9 +414,22 @@ class DataOrchestrator:
 
     def create_incidents(self, processed_posts: List[ProcessedPost]) -> List[Incident]:
         """Create incidents from processed posts"""
+        # Build a mapping from raw_post_id to RawPost
+        raw_post_map = {raw_post.id: raw_post for raw_post in self.db.query(RawPost).all()}
+        
         # Convert to dict for verification service
-        posts_dict = [
-            {
+        posts_dict = []
+        for post in processed_posts:
+            raw_post = raw_post_map.get(post.raw_post_id)
+            if raw_post:
+                title = raw_post.extra.get("title") if raw_post.extra else None
+                headline = raw_post.extra.get("headline") if raw_post.extra else None
+                content = raw_post.content
+            else:
+                title = None
+                headline = None
+                content = None
+            posts_dict.append({
                 "id": post.id,
                 "protest_score": post.protest_score,
                 "sentiment_score": post.sentiment_score,
@@ -422,10 +437,11 @@ class DataOrchestrator:
                 "location_lng": post.location_lng,
                 "platform": post.platform,
                 "link": post.link,
-                "timestamp": post.timestamp.isoformat()
-            }
-            for post in processed_posts
-        ]
+                "timestamp": post.timestamp.isoformat(),
+                "title": title,
+                "headline": headline,
+                "content": content
+            })
         
         print(f"[DEBUG] create_incidents: {len(posts_dict)} processed posts passed to verification.")
         # Verify and create incidents

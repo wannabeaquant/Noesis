@@ -39,21 +39,12 @@ class TwitterCollector:
             return self._get_mock_data()
         
         try:
-            # Build queries from keywords
-            kw = self.keywords
-            # Main OR query (all protest/unrest/violence/early warning)
-            main_terms = kw["protest_unrest"] + kw["escalation_violence"] + kw["early_warning"]
-            main_query = " OR ".join([f'"{term}"' if ' ' in term else term for term in main_terms])
-            queries = [f'({main_query}) lang:en -is:retweet']
-
-            # Add some AND combinations for higher signal
-            for p in kw["protest_unrest"]:
-                for e in kw["escalation_violence"]:
-                    queries.append(f'("{p}" "{e}") lang:en -is:retweet')
-                for t in kw["triggers"]:
-                    queries.append(f'("{p}" "{t}") lang:en -is:retweet')
+            # Replace the long search rule with a shorter one under 512 chars
+            SEARCH_RULE = (
+                '(protest OR unrest OR riot OR "civil unrest" OR strike OR march OR rally OR demonstration OR clash OR police OR arrest OR violence OR curfew OR lockdown OR military OR deployment OR crowd OR tension OR threat OR situation OR update) lang:en -is:retweet'
+            )
             # Limit to avoid API abuse
-            queries = queries[:10]
+            queries = [SEARCH_RULE]
 
             for query in queries:
                 response = self.client.search_recent_tweets(

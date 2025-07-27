@@ -129,10 +129,18 @@ class VerificationService:
                 description_snippets.append(snippet.strip())
         incident_description = " | ".join(description_snippets) if description_snippets else "No further details available."
 
+        # For sources, use only valid, non-empty, http links from the top 3 posts by protest score, deduplicated
+        sorted_cluster = sorted(cluster, key=lambda x: x.get("protest_score", 0), reverse=True)
+        valid_links = []
+        for post in sorted_cluster[:3]:
+            link = post.get("link")
+            if link and isinstance(link, str) and link.startswith("http") and link not in valid_links:
+                valid_links.append(link)
+
         return {
             "title": incident_title.strip(),
             "description": incident_description,
-            "sources": [post.get("link") for post in cluster if post.get("link")],
+            "sources": valid_links,
             "location": self.get_location_name(avg_lat, avg_lng),
             "location_lat": avg_lat,
             "location_lng": avg_lng,
