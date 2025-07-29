@@ -111,7 +111,10 @@ class NLPPipeline:
             "platform": post.get("platform"),
             "link": post.get("link"),
             "entities": entities,
-            "status": "unverified"
+            "status": "unverified",
+            "title": post.get("title"),
+            "headline": post.get("headline"),
+            "content": post.get("content")
         }
 
     def detect_language(self, text: str) -> str:

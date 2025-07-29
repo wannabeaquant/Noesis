@@ -109,13 +109,38 @@ class VerificationService:
             severity = "low"
             status = "unverified"
         
-        # Create title from most relevant post
+        # Find the most relevant post (highest protest score)
         most_relevant = max(cluster, key=lambda x: x.get("protest_score", 0))
-        
+
+        # Try to get a meaningful title
+        incident_title = (
+            most_relevant.get("title") or
+            most_relevant.get("headline") or
+            most_relevant.get("content") or
+            f"Civil unrest reported in {self.get_location_name(avg_lat, avg_lng)}"
+        )
+
+        # For description, use the top 3 posts' content/title/headline
+        sorted_cluster = sorted(cluster, key=lambda x: x.get("protest_score", 0), reverse=True)
+        description_snippets = []
+        for post in sorted_cluster[:3]:  # Top 3 posts
+            snippet = post.get("content") or post.get("title") or post.get("headline")
+            if snippet:
+                description_snippets.append(snippet.strip())
+        incident_description = " | ".join(description_snippets) if description_snippets else "No further details available."
+
+        # For sources, use only valid, non-empty, http links from the top 3 posts by protest score, deduplicated
+        sorted_cluster = sorted(cluster, key=lambda x: x.get("protest_score", 0), reverse=True)
+        valid_links = []
+        for post in sorted_cluster[:3]:
+            link = post.get("link")
+            if link and isinstance(link, str) and link.startswith("http") and link not in valid_links:
+                valid_links.append(link)
+
         return {
-            "title": f"Civil unrest reported in {self.get_location_name(avg_lat, avg_lng)}",
-            "description": f"Multiple sources report civil unrest. {len(cluster)} posts across {platform_diversity} platforms.",
-            "sources": [post.get("link") for post in cluster if post.get("link")],
+            "title": incident_title.strip(),
+            "description": incident_description,
+            "sources": valid_links,
             "location": self.get_location_name(avg_lat, avg_lng),
             "location_lat": avg_lat,
             "location_lng": avg_lng,
